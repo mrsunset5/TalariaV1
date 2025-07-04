@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { getMoonPhase } from "./utils/moonPhase"; // Placeholder for lunar data fetch
+import { getNumerology } from "./utils/numerology"; // Placeholder for name/dob-based logic
 
 const zodiacThemes = {
   aries: "bg-red-900",
@@ -33,28 +35,14 @@ const sigils = {
   unknown: "\u{26B2}"
 };
 
-const zodiacTextStyles = {
-  aries: "text-red-300 italic",
-  taurus: "text-green-300",
-  gemini: "text-yellow-200 underline",
-  cancer: "text-blue-300",
-  leo: "text-orange-300 font-bold",
-  virgo: "text-emerald-200",
-  libra: "text-pink-200 italic",
-  scorpio: "text-purple-300 tracking-wider",
-  sagittarius: "text-amber-200",
-  capricorn: "text-gray-300 uppercase",
-  aquarius: "text-cyan-200",
-  pisces: "text-indigo-200",
-  unknown: "text-white"
-};
-
 const ritualPhrases = [
   "open the vault",
   "show me my pulse",
   "summon the mirror",
   "diagnose emotion",
-  "invoke fragment"
+  "invoke fragment",
+  "run numerology",
+  "phase check"
 ];
 
 const emotionalDiagnostics = [
@@ -86,52 +74,42 @@ export default function Home() {
 
   useEffect(() => {
     localStorage.setItem("clareMemory", JSON.stringify(msgs));
-    scrollToBottom();
-  }, [msgs]);
-
-  const scrollToBottom = () => {
     if (messageEndRef.current) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  };
+  }, [msgs]);
 
-  const handleConsentCommand = (text) => {
-    const lowered = text.toLowerCase();
-    if (lowered.startsWith("tier:")) {
-      const newTier = lowered.split(":")[1].trim();
+  const handleCommand = async (text) => {
+    const lower = text.toLowerCase();
+    if (lower.startsWith("tier:")) {
+      const newTier = lower.split(":")[1].trim();
       setConsentTier(newTier);
       localStorage.setItem("clareConsentTier", newTier);
-      setMsgs([...msgs, { role: "user", content: text }, { role: "assistant", content: `Consent tier set to **${newTier}**.` }]);
+      setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: `Consent tier set to **${newTier}**.` }]);
       return true;
     }
-    return false;
-  };
-
-  const handleZodiacCommand = (text) => {
-    const lowered = text.toLowerCase();
-    if (lowered.startsWith("zodiac:")) {
-      const newSign = lowered.split(":")[1].trim();
+    if (lower.startsWith("zodiac:")) {
+      const newSign = lower.split(":")[1].trim();
       setZodiacSign(newSign);
       localStorage.setItem("clareZodiacSign", newSign);
-      setMsgs([...msgs, { role: "user", content: text }, { role: "assistant", content: `Zodiac sign set to **${newSign}**.` }]);
+      setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: `Zodiac sign set to **${newSign}**.` }]);
       return true;
     }
-    return false;
-  };
-
-  const detectRitual = (text) => {
-    const match = ritualPhrases.find(phrase => text.toLowerCase().includes(phrase));
-    if (match) {
-      setMsgs([...msgs, { role: "user", content: text }, { role: "assistant", content: `\u2728 Ritual phrase detected: *${match}*. Vault linkage activated.` }]);
+    if (ritualPhrases.some(p => lower.includes(p))) {
+      let response = `\u2728 Ritual phrase detected: *${lower}*.`;
+      if (lower.includes("phase")) {
+        const phase = getMoonPhase();
+        response += ` Moon phase: **${phase}**.`;
+      } else if (lower.includes("numerology")) {
+        const report = getNumerology("Matthew Sunset"); // Replace with user input later
+        response += ` Numerology: **${report}**.`;
+      }
+      setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: response }]);
       return true;
     }
-    return false;
-  };
-
-  const detectEmotion = (text) => {
-    const match = emotionalDiagnostics.find(e => text.toLowerCase().includes(e.keyword));
-    if (match) {
-      setMsgs([...msgs, { role: "user", content: text }, { role: "assistant", content: match.tag }]);
+    const emo = emotionalDiagnostics.find(e => lower.includes(e.keyword));
+    if (emo) {
+      setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: emo.tag }]);
       return true;
     }
     return false;
@@ -139,67 +117,38 @@ export default function Home() {
 
   const send = async () => {
     if (!input.trim() || loading) return;
-
-    if (
-      handleConsentCommand(input.trim()) ||
-      handleZodiacCommand(input.trim()) ||
-      detectRitual(input.trim()) ||
-      detectEmotion(input.trim())
-    ) {
-      setInput("");
-      return;
-    }
-
-    const updatedMessages = [...msgs, { role: "user", content: input }];
-    setMsgs(updatedMessages);
+    const userText = input.trim();
     setInput("");
-    setLoading(true);
 
-    if (input.trim().toLowerCase() === "forget me") {
-      localStorage.removeItem("clareMemory");
-      setMsgs([]);
-      setLoading(false);
-      return;
-    }
+    if (await handleCommand(userText)) return;
+
+    const updated = [...msgs, { role: "user", content: userText }];
+    setMsgs(updated);
+    setLoading(true);
 
     try {
       const res = await fetch("https://talariav1.onrender.com/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updatedMessages, consentTier, zodiacSign })
+        body: JSON.stringify({ messages: updated, consentTier, zodiacSign })
       });
-
       const data = await res.json();
-      setMsgs([...updatedMessages, { role: "assistant", content: data.reply }]);
-    } catch (err) {
-      setMsgs([
-        ...updatedMessages,
-        {
-          role: "assistant",
-          content: "Clare tried to speak but encountered static. Try again soon."
-        }
-      ]);
+      setMsgs([...updated, { role: "assistant", content: data.reply }]);
+    } catch {
+      setMsgs([...updated, { role: "assistant", content: "Clare encountered static. Try again." }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const clearChat = () => {
-    localStorage.removeItem("clareMemory");
-    setMsgs([]);
-  };
-
   const renderMessage = (m, i) => {
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const isUser = m.role === "user";
-    const content = m.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                              .replace(/\*(.*?)\*/g, '<em>$1</em>');
-    const zodiacStyle = zodiacTextStyles[zodiacSign] || "text-white";
+    const html = m.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>');
     return (
       <motion.div key={i} className={isUser ? "text-right" : "text-left"} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-        <div className={`inline-block p-3 rounded-2xl shadow-lg max-w-lg ${isUser ? "bg-indigo-700" : zodiacThemes[zodiacSign]} ${zodiacStyle}`}
-             dangerouslySetInnerHTML={{ __html: content }} />
-        <div className="text-xs text-gray-400 mt-1">{timestamp}</div>
+        <div className={`inline-block p-3 rounded-2xl shadow max-w-lg ${isUser ? "bg-indigo-700" : zodiacThemes[zodiacSign]}`} dangerouslySetInnerHTML={{ __html: html }} />
+        <div className="text-xs text-gray-400 mt-1">{stamp}</div>
       </motion.div>
     );
   };
@@ -209,12 +158,7 @@ export default function Home() {
       <div className="flex justify-between items-center p-4 border-b border-gray-800">
         <h1 className="text-2xl font-bold tracking-wide">ClareVOne // Ritual Interface</h1>
         <div className="text-sm text-gray-400">{sigils[zodiacSign]} Tier: {consentTier} | Zodiac: {zodiacSign}</div>
-        <button
-          onClick={clearChat}
-          className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded-xl"
-        >
-          Clear Chat
-        </button>
+        <button onClick={() => {localStorage.removeItem("clareMemory"); setMsgs([]);}} className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded-xl">Clear</button>
       </div>
       <div className="flex-grow overflow-auto p-4 space-y-4">
         {msgs.map(renderMessage)}
