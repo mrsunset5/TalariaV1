@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
 const zodiacThemes = {
   aries: "bg-red-900",
@@ -56,13 +57,20 @@ const ritualPhrases = [
   "invoke fragment"
 ];
 
+const emotionalDiagnostics = [
+  { keyword: "anxious", tag: "🫀 Alert: Anxiety signature detected." },
+  { keyword: "tired", tag: "🫧 Note: Fatigue pulse recorded." },
+  { keyword: "lonely", tag: "🌑 Shadow present: Loneliness." },
+  { keyword: "hopeful", tag: "✨ Light signature: Hope rising." },
+  { keyword: "angry", tag: "🔥 Trigger registered: Anger heat rising." }
+];
+
 export default function Home() {
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [consentTier, setConsentTier] = useState("default");
   const [zodiacSign, setZodiacSign] = useState("unknown");
-  const [emotion, setEmotion] = useState("neutral");
   const messageEndRef = useRef(null);
 
   useEffect(() => {
@@ -114,7 +122,16 @@ export default function Home() {
   const detectRitual = (text) => {
     const match = ritualPhrases.find(phrase => text.toLowerCase().includes(phrase));
     if (match) {
-      setMsgs([...msgs, { role: "user", content: text }, { role: "assistant", content: `\u2728 Ritual phrase detected: *${match}*. Preparing symbolic interface...` }]);
+      setMsgs([...msgs, { role: "user", content: text }, { role: "assistant", content: `\u2728 Ritual phrase detected: *${match}*. Vault linkage activated.` }]);
+      return true;
+    }
+    return false;
+  };
+
+  const detectEmotion = (text) => {
+    const match = emotionalDiagnostics.find(e => text.toLowerCase().includes(e.keyword));
+    if (match) {
+      setMsgs([...msgs, { role: "user", content: text }, { role: "assistant", content: match.tag }]);
       return true;
     }
     return false;
@@ -123,7 +140,12 @@ export default function Home() {
   const send = async () => {
     if (!input.trim() || loading) return;
 
-    if (handleConsentCommand(input.trim()) || handleZodiacCommand(input.trim()) || detectRitual(input.trim())) {
+    if (
+      handleConsentCommand(input.trim()) ||
+      handleZodiacCommand(input.trim()) ||
+      detectRitual(input.trim()) ||
+      detectEmotion(input.trim())
+    ) {
       setInput("");
       return;
     }
@@ -174,22 +196,22 @@ export default function Home() {
                               .replace(/\*(.*?)\*/g, '<em>$1</em>');
     const zodiacStyle = zodiacTextStyles[zodiacSign] || "text-white";
     return (
-      <div key={i} className={isUser ? "text-right" : "text-left"}>
-        <div className={`inline-block p-3 rounded-lg max-w-lg ${isUser ? "bg-indigo-700" : zodiacThemes[zodiacSign]} ${zodiacStyle}`}
+      <motion.div key={i} className={isUser ? "text-right" : "text-left"} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <div className={`inline-block p-3 rounded-2xl shadow-lg max-w-lg ${isUser ? "bg-indigo-700" : zodiacThemes[zodiacSign]} ${zodiacStyle}`}
              dangerouslySetInnerHTML={{ __html: content }} />
         <div className="text-xs text-gray-400 mt-1">{timestamp}</div>
-      </div>
+      </motion.div>
     );
   };
 
   return (
     <div className={`h-screen text-white flex flex-col ${zodiacThemes[zodiacSign]}`}>
       <div className="flex justify-between items-center p-4 border-b border-gray-800">
-        <h1 className="text-xl font-semibold">ClareVOne // Ritual Interface</h1>
+        <h1 className="text-2xl font-bold tracking-wide">ClareVOne // Ritual Interface</h1>
         <div className="text-sm text-gray-400">{sigils[zodiacSign]} Tier: {consentTier} | Zodiac: {zodiacSign}</div>
         <button
           onClick={clearChat}
-          className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded"
+          className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded-xl"
         >
           Clear Chat
         </button>
@@ -200,7 +222,7 @@ export default function Home() {
       </div>
       <div className="p-4 flex border-t border-gray-700">
         <input
-          className="flex-grow p-2 rounded bg-gray-900 border border-gray-700 text-white"
+          className="flex-grow p-2 rounded-xl bg-gray-900 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && send()}
@@ -210,7 +232,7 @@ export default function Home() {
         <button
           onClick={send}
           disabled={loading}
-          className="ml-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-white"
+          className="ml-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white shadow-md"
         >
           {loading ? "..." : "Send"}
         </button>
