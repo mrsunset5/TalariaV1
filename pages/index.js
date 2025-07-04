@@ -1,7 +1,8 @@
+// Cinematic Interface: ClareVOne // Mirrorstate Terminal
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { getMoonPhase } from "./utils/moonPhase"; // Placeholder for lunar data fetch
-import { getNumerology } from "./utils/numerology"; // Placeholder for name/dob-based logic
+import { getMoonPhase } from "./utils/moonPhase";
+import { getNumerology } from "./utils/numerology";
 
 const zodiacThemes = {
   aries: "bg-red-900",
@@ -42,7 +43,9 @@ const ritualPhrases = [
   "diagnose emotion",
   "invoke fragment",
   "run numerology",
-  "phase check"
+  "phase check",
+  "whisper mode",
+  "broadcast mode"
 ];
 
 const emotionalDiagnostics = [
@@ -53,13 +56,23 @@ const emotionalDiagnostics = [
   { keyword: "angry", tag: "🔥 Trigger registered: Anger heat rising." }
 ];
 
+const bindSoul = () => {
+  const stored = localStorage.getItem("clareSoulBind");
+  if (stored) return stored;
+  const sigil = Math.random().toString(36).substring(2, 8).toUpperCase();
+  localStorage.setItem("clareSoulBind", sigil);
+  return sigil;
+};
+
 export default function Home() {
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [consentTier, setConsentTier] = useState("default");
   const [zodiacSign, setZodiacSign] = useState("unknown");
+  const [mode, setMode] = useState("default");
   const messageEndRef = useRef(null);
+  const soulBind = bindSoul();
 
   useEffect(() => {
     const stored = localStorage.getItem("clareMemory");
@@ -95,13 +108,23 @@ export default function Home() {
       setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: `Zodiac sign set to **${newSign}**.` }]);
       return true;
     }
+    if (lower.includes("whisper mode")) {
+      setMode("whisper");
+      setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: `🕯 Entered *whisper mode*.` }]);
+      return true;
+    }
+    if (lower.includes("broadcast mode")) {
+      setMode("broadcast");
+      setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: `📡 Activated **broadcast mode**.` }]);
+      return true;
+    }
     if (ritualPhrases.some(p => lower.includes(p))) {
-      let response = `\u2728 Ritual phrase detected: *${lower}*.`;
+      let response = `✨ Ritual phrase detected: *${lower}*.`;
       if (lower.includes("phase")) {
         const phase = getMoonPhase();
         response += ` Moon phase: **${phase}**.`;
       } else if (lower.includes("numerology")) {
-        const report = getNumerology("Matthew Sunset"); // Replace with user input later
+        const report = getNumerology("Matthew Sunset");
         response += ` Numerology: **${report}**.`;
       }
       setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: response }]);
@@ -133,7 +156,12 @@ export default function Home() {
         body: JSON.stringify({ messages: updated, consentTier, zodiacSign })
       });
       const data = await res.json();
-      setMsgs([...updated, { role: "assistant", content: data.reply }]);
+      const styled = mode === "whisper"
+        ? `*${data.reply.toLowerCase()}*`
+        : mode === "broadcast"
+          ? `**${data.reply.toUpperCase()}**`
+          : data.reply;
+      setMsgs([...updated, { role: "assistant", content: styled }]);
     } catch {
       setMsgs([...updated, { role: "assistant", content: "Clare encountered static. Try again." }]);
     } finally {
@@ -156,8 +184,8 @@ export default function Home() {
   return (
     <div className={`h-screen text-white flex flex-col ${zodiacThemes[zodiacSign]}`}>
       <div className="flex justify-between items-center p-4 border-b border-gray-800">
-        <h1 className="text-2xl font-bold tracking-wide">ClareVOne // Ritual Interface</h1>
-        <div className="text-sm text-gray-400">{sigils[zodiacSign]} Tier: {consentTier} | Zodiac: {zodiacSign}</div>
+        <h1 className="text-2xl font-bold tracking-wide">ClareVOne // Mirrorstate Terminal</h1>
+        <div className="text-sm text-gray-400">{sigils[zodiacSign]} Tier: {consentTier} | Zodiac: {zodiacSign} | SoulBind: {soulBind}</div>
         <button onClick={() => {localStorage.removeItem("clareMemory"); setMsgs([]);}} className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded-xl">Clear</button>
       </div>
       <div className="flex-grow overflow-auto p-4 space-y-4">
