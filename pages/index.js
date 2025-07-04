@@ -9,36 +9,27 @@ import { drawCapriceCard } from "./utils/capriceDeck";
 const ritualPhrases = ["sabian symbol", "divine for me", "draw caprice"];
 const emotionalDiagnostics = [
   { keyword: "lonely", tag: "🌒 You are witnessed in your quiet ache." },
-  { keyword: "overwhelmed", tag: "🌊 Let it crest. Breathe. Recalibrate." },
-  // Add more if needed
+  { keyword: "overwhelmed", tag: "🌊 Let it crest. Breathe. Recalibrate." }
 ];
 
-const formatDivinatory = (text) => {
-  return `🔮 <em>${text}</em> \n <small>— pulled from the veil</small>`;
-};
+const formatDivinatory = (text) => `🔮 <em>${text}</em> <br/><small>— pulled from the veil</small>`;
+const formatCaprice = (card) => `🎴 <strong>${card.name}</strong><br/><em>${card.flavor}</em><br/><small>${card.origin}</small>`;
 
-const formatCaprice = (card) => {
-  return `🎴 <strong>${card.name}</strong><br/><em>${card.flavor}</em><br/><small>${card.origin}</small>`;
-};
-
-const sendMessage = async (text) => {
+const sendMessage = async (text, consentTier, zodiacSign) => {
   const res = await fetch("https://talariav1.onrender.com/chat", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      messages: [
-        { role: "user", content: text }
-      ]
+      messages: [{ role: "user", content: text }],
+      consentTier,
+      zodiacSign
     })
   });
-
   const data = await res.json();
   return data.reply;
 };
 
-const handleCommand = async (text, setMsgs, setConsentTier, setZodiacSign, setMode) => {
+const handleCommand = async (text, setMsgs, setConsentTier, setZodiacSign, setMode, consentTier, zodiacSign) => {
   const lower = text.toLowerCase();
 
   if (lower.startsWith("tier:")) {
@@ -98,8 +89,9 @@ const handleCommand = async (text, setMsgs, setConsentTier, setZodiacSign, setMo
     return true;
   }
 
-  const reply = await sendMessage(text);
-  setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: reply }]);
+  const reply = await sendMessage(text, consentTier, zodiacSign);
+  const velvetReply = `🪞 <div style='background:#0e001b;padding:1rem;border-radius:0.5rem;border:1px solid #531179'><span style='color:#e2c4ff;font-style:italic;'>${reply}</span></div>`;
+  setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: velvetReply }]);
   return true;
 };
 
