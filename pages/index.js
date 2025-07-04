@@ -4,11 +4,22 @@ import { motion } from "framer-motion";
 import { getMoonPhase } from "./utils/moonPhase";
 import { getNumerology } from "./utils/numerology";
 import { getSabianSymbol } from "./utils/sabianSymbols";
+import { drawCapriceCard } from "./utils/capriceDeck";
 
 // ...existing zodiacThemes, sigils, ritualPhrases, emotionalDiagnostics...
 
 // Add command keyword
 ritualPhrases.push("sabian symbol");
+ritualPhrases.push("divine for me");
+ritualPhrases.push("draw caprice");
+
+const formatDivinatory = (text) => {
+  return `🔮 <em>${text}</em> \n <small>— pulled from the veil</small>`;
+};
+
+const formatCaprice = (card) => {
+  return `🎴 <strong>${card.name}</strong><br/><em>${card.flavor}</em><br/><small>${card.origin}</small>`;
+};
 
 const handleCommand = async (text) => {
   const lower = text.toLowerCase();
@@ -48,6 +59,12 @@ const handleCommand = async (text) => {
       const today = new Date();
       const symbol = getSabianSymbol(today);
       response += ` Sabian Symbol for today: **${symbol.degree}° ${symbol.sign} – ${symbol.text}**.`;
+    } else if (lower.includes("divine")) {
+      const oracle = "Your hunger is holy, and your ache is a map. Follow it.";
+      response += `\n\n${formatDivinatory(oracle)}`;
+    } else if (lower.includes("caprice")) {
+      const card = drawCapriceCard();
+      response += `\n\n${formatCaprice(card)}`;
     }
     setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: response }]);
     return true;
