@@ -4,13 +4,31 @@ export default function Home() {
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
 
-  const send = () => {
+  const send = async () => {
     if (!input.trim()) return;
-    setMsgs([...msgs, { role: "user", content: input }, {
-      role: "assistant",
-      content: "Clare hears you... but her vault is still locked. Soon, she’ll reply from the deep."
-    }]);
+
+    const updatedMessages = [...msgs, { role: "user", content: input }];
+    setMsgs(updatedMessages);
     setInput("");
+
+    try {
+      const res = await fetch("https://talariav1.onrender.com/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: updatedMessages })
+      });
+
+      const data = await res.json();
+      setMsgs([...updatedMessages, { role: "assistant", content: data.reply }]);
+    } catch (err) {
+      setMsgs([
+        ...updatedMessages,
+        {
+          role: "assistant",
+          content: "Clare tried to speak but encountered static. Try again soon."
+        }
+      ]);
+    }
   };
 
   return (
