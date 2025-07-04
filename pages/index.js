@@ -6,12 +6,12 @@ import { getNumerology } from "./utils/numerology";
 import { getSabianSymbol } from "./utils/sabianSymbols";
 import { drawCapriceCard } from "./utils/capriceDeck";
 
-// ...existing zodiacThemes, sigils, ritualPhrases, emotionalDiagnostics...
-
-// Add command keyword
-ritualPhrases.push("sabian symbol");
-ritualPhrases.push("divine for me");
-ritualPhrases.push("draw caprice");
+const ritualPhrases = ["sabian symbol", "divine for me", "draw caprice"];
+const emotionalDiagnostics = [
+  { keyword: "lonely", tag: "🌒 You are witnessed in your quiet ache." },
+  { keyword: "overwhelmed", tag: "🌊 Let it crest. Breathe. Recalibrate." },
+  // Add more if needed
+];
 
 const formatDivinatory = (text) => {
   return `🔮 <em>${text}</em> \n <small>— pulled from the veil</small>`;
@@ -21,8 +21,26 @@ const formatCaprice = (card) => {
   return `🎴 <strong>${card.name}</strong><br/><em>${card.flavor}</em><br/><small>${card.origin}</small>`;
 };
 
-const handleCommand = async (text) => {
+const sendMessage = async (text) => {
+  const res = await fetch("https://talariav1.onrender.com/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      messages: [
+        { role: "user", content: text }
+      ]
+    })
+  });
+
+  const data = await res.json();
+  return data.reply;
+};
+
+const handleCommand = async (text, setMsgs, setConsentTier, setZodiacSign, setMode) => {
   const lower = text.toLowerCase();
+
   if (lower.startsWith("tier:")) {
     const newTier = lower.split(":")[1].trim();
     setConsentTier(newTier);
@@ -30,6 +48,7 @@ const handleCommand = async (text) => {
     setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: `Consent tier set to **${newTier}**.` }]);
     return true;
   }
+
   if (lower.startsWith("zodiac:")) {
     const newSign = lower.split(":")[1].trim();
     setZodiacSign(newSign);
@@ -37,16 +56,19 @@ const handleCommand = async (text) => {
     setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: `Zodiac sign set to **${newSign}**.` }]);
     return true;
   }
+
   if (lower.includes("whisper mode")) {
     setMode("whisper");
     setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: `🕯 Entered *whisper mode*.` }]);
     return true;
   }
+
   if (lower.includes("broadcast mode")) {
     setMode("broadcast");
     setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: `📡 Activated **broadcast mode**.` }]);
     return true;
   }
+
   if (ritualPhrases.some(p => lower.includes(p))) {
     let response = `✨ Ritual phrase detected: *${lower}*.`;
     if (lower.includes("phase")) {
@@ -69,10 +91,16 @@ const handleCommand = async (text) => {
     setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: response }]);
     return true;
   }
+
   const emo = emotionalDiagnostics.find(e => lower.includes(e.keyword));
   if (emo) {
     setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: emo.tag }]);
     return true;
   }
-  return false;
+
+  const reply = await sendMessage(text);
+  setMsgs(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: reply }]);
+  return true;
 };
+
+export default handleCommand;
